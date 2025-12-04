@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>To: 周韵</title>
+    <style>
+        /* --- 全局样式 --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background-color: #000;
+            overflow: hidden; /* 禁止滚动 */
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+
+        /* --- 场景1：密码登录 --- */
+        #scene-login {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            /* 甜美粉色渐变背景 */
+            background: linear-gradient(135deg, #ffe6eb 0%, #ffc0cb 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+            transition: opacity 1s ease;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 25px;
+            width: 80%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(255, 105, 180, 0.3);
+            border: 3px solid #fff;
+        }
+
+        .avatar {
+            font-size: 50px;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            color: #ff69b4;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 2px solid #ffb7c5;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 18px;
+            outline: none;
+            color: #ff69b4;
+        }
+
+        .btns { display: flex; gap: 10px; }
+        
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .btn-ok { background: #ff69b4; color: white; }
+        .btn-cancel { background: #f0f0f0; color: #888; }
+
+        /* --- 场景2：气泡弹窗 --- */
+        #scene-bubbles {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, #ffeff2, #ffd1dc);
+            display: none;
+            z-index: 20;
+            overflow: hidden;
+        }
+
+        .bubble {
+            position: absolute;
+            background: linear-gradient(45deg, #fff 0%, #fff0f5 100%);
+            color: #d6336c;
+            padding: 10px 15px;
+            border-radius: 15px;
+            border-bottom-left-radius: 2px;
+            font-size: 13px;
+            font-weight: bold;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #ffb7c5;
+            max-width: 220px;
+            opacity: 0;
+            transform: scale(0);
+            animation: popUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .bubble::after {
+            content: '🌸'; 
+            position: absolute;
+            right: -5px; top: -10px;
+            font-size: 14px;
+        }
+
+        @keyframes popUp {
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* --- 场景3：粒子聚焦 --- */
+        #scene-particles {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #000;
+            display: none;
+            z-index: 10;
+        }
+        
+        canvas { display: block; }
+        
+        /* 音乐按钮 */
+        #music-btn {
+            position: fixed;
+            top: 20px; right: 20px;
+            z-index: 100;
+            font-size: 24px;
+            opacity: 0.5;
+            display: none;
+            cursor: pointer;
+            animation: rotate 3s linear infinite;
+        }
+        @keyframes rotate { from{transform: rotate(0deg);} to{transform: rotate(360deg);} }
+
+    </style>
+</head>
+<body>
+
+    <!-- 
+        核心修改：使用网络音乐链接 
+        这里使用的是网易云音乐的外链，如果失效可以按下面的教程替换
+    -->
+    <audio id="bgm" loop>
+        <!-- 下面这个 src 就是音乐链接，你可以换成其他的 mp3 网址 -->
+        <source src="https://music.163.com/song/media/outer/url?id=480353.mp3" type="audio/mpeg">
+    </audio>
+    
+    <div id="music-btn" onclick="toggleMusic()">🎵</div>
+
+    <!-- 场景1 -->
+    <div id="scene-login">
+        <div class="login-card">
+            <div class="avatar">🐱</div>
+            <h2>周韵</h2>
+            <input type="password" id="passcode" placeholder="请输入个人密码">
+            <div class="btns">
+                <button class="btn-cancel" onclick="alert('没有取消选项，必须上岸！')">取消</button>
+                <button class="btn-ok" onclick="checkLogin()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 场景2 -->
+    <div id="scene-bubbles"></div>
+
+    <!-- 场景3 -->
+    <div id="scene-particles">
+        <canvas id="pCanvas"></canvas>
+    </div>
+
+    <script>
+        // ============ 配置区 ============
+        const CONFIG = {
+            password: "0414",
+            bubbleDelay: 400,
+            sceneWait: 3000
+        };
+
+        const MESSAGES = [
+            // --- Part 1: 十二月 & 可爱 & Hello Kitty ---
+            "周韵，十二月快乐！✨", "Hello Kitty说你今天超美", "十二月来给周韵送礼物啦🎁", 
+            "愿你每天都可可爱爱", "冬天要多喝热奶茶☕", "周韵是世界第一大美女🐱", 
+            "把星星摘下来送给你⭐", "所有的霉运都走开！", "周韵，平安喜乐🍎", 
+            "叮叮当，铃儿响叮当🔔", "粉色的好运正在派送中...", "记得要早点睡觉哦💤", 
+            "周韵，你是最棒的！💖", "下雪的时候去看看把❄️", "拥有Hello Kitty同款开心", 
+            "收下这颗爱心💗", "周韵要一直开开心心", "今天的幸运色是粉色🎀", 
+            "愿望清单全部实现✅", "你是十二月的小确幸", "周韵来拥抱一下吧🧸", 
+            "好运+1 +1 +1 🍀", "周韵的笑容最治愈", "Merry Christmas🎄", 
+            "生活明朗，万物可爱", "周韵，要照顾好自己🧣", "和你分享第一口蛋糕🍰", 
+            "所有的美好如期而至", "周韵，新年也要快乐🎉", "做自己的小公主👑",
+            
+            // --- Part 2: 考研 & 厦大 & 前途 ---
+            "✨ 一研为定，定为研一！", "目标：厦门大学！🌊", "准研究生周韵，你好呀",
+            "关关难过关关过，前路漫漫亦灿灿", "熬过的夜，都会变成光✨", 
+            "明年九月，厦大凤凰花为你开🌺", "笔尖生花，金榜题名！", 
+            "乾坤未定，周韵你就是黑马", "星光不问赶路人", "愿你合上笔盖的那一刻，有侠客收剑的骄傲",
+            "厦大在等你，未来在等你", "考研必胜！岸上见！✌️", "前途似海，来日方长",
+            "所有的努力都不会被辜负", "最后这几天，稳住能赢！", "周韵，你一定可以的！💪",
+            "去更高的地方看风景", "愿结果配得上你所有的颠沛流离", 
+            "成功上岸，前程似锦🌈", "我们厦大见！🎓"
+        ];
+
+        // ============ 逻辑控制 ============
+
+        function checkLogin() {
+            const val = document.getElementById('passcode').value;
+            if (val === CONFIG.password) {
+                // 播放网络音乐
+                const audio = document.getElementById('bgm');
+                audio.play().catch(error => {
+                    console.log("自动播放可能被拦截");
+                });
+                document.getElementById('music-btn').style.display = 'block';
+
+                // 转场
+                const loginLayer = document.getElementById('scene-login');
+                loginLayer.style.opacity = 0;
+                setTimeout(() => {
+                    loginLayer.style.display = 'none';
+                    startBubbles();
+                }, 800);
+            } else {
+                alert("密码不对哦~ 是生日吗？");
+                document.getElementById('passcode').value = "";
+            }
+        }
+        
+        // 音乐控制
+        let isPlaying = true;
+        function toggleMusic() {
+            const audio = document.getElementById('bgm');
+            const btn = document.getElementById('music-btn');
+            if (isPlaying) {
+                audio.pause();
+                btn.style.animation = 'none';
+                btn.style.opacity = '0.3';
+            } else {
+                audio.play();
+                btn.style.animation = 'rotate 3s linear infinite';
+                btn.style.opacity = '0.5';
+            }
+            isPlaying = !isPlaying;
+        }
+
+        // 2. 气泡弹窗逻辑
+        function startBubbles() {
+            const container = document.getElementById('scene-bubbles');
+            container.style.display = 'block';
+
+            let count = 0;
+            const total = MESSAGES.length;
+
+            MESSAGES.forEach((msg, i) => {
+                setTimeout(() => {
+                    createBubble(container, msg);
+                    count++;
+                    if(count === total) {
+                        setTimeout(startParticles, CONFIG.sceneWait);
+                    }
+                }, i * CONFIG.bubbleDelay);
+            });
+        }
+
+        function createBubble(parent, text) {
+            const b = document.createElement('div');
+            b.className = 'bubble';
+            b.innerText = text;
+
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const maxLeft = w - 160; 
+            const maxTop = h - 80;
+            const left = Math.random() * maxLeft + 20;
+            const top = Math.random() * maxTop + 50;
+
+            b.style.left = left + 'px';
+            b.style.top = top + 'px';
+            b.style.zIndex = 100 + count; 
+            const hue = 330 + Math.random() * 20; 
+            b.style.background = `linear-gradient(135deg, hsl(${hue}, 100%, 97%) 0%, #fff 100%)`;
+            parent.appendChild(b);
+        }
+        
+        let count = 0;
+
+        // 3. 粒子特效逻辑
+        function startParticles() {
+            const bLayer = document.getElementById('scene-bubbles');
+            bLayer.style.transition = 'opacity 2s';
+            bLayer.style.opacity = 0;
+            setTimeout(() => {
+                bLayer.style.display = 'none';
+                document.getElementById('scene-particles').style.display = 'block';
+                initCanvas();
+            }, 2000);
+        }
+
+        function initCanvas() {
+            const canvas = document.getElementById('pCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            let particles = [];
+            const fontSize1 = Math.min(window.innerWidth / 4, 100); 
+            const fontSize2 = Math.min(window.innerWidth / 10, 50);
+
+            class Particle {
+                constructor(targetX, targetY) {
+                    this.tx = targetX;
+                    this.ty = targetY;
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.vx = 0; this.vy = 0;
+                    const colors = ['#ff69b4', '#ff1493', '#00bfff', '#ffd700', '#ffffff'];
+                    this.color = colors[Math.floor(Math.random() * colors.length)];
+                    this.friction = 0.93; 
+                    this.ease = Math.random() * 0.05 + 0.02; 
+                }
+                update() {
+                    const dx = this.tx - this.x;
+                    const dy = this.ty - this.y;
+                    this.vx += dx * this.ease; this.vy += dy * this.ease;
+                    this.vx *= this.friction; this.vy *= this.friction;
+                    this.x += this.vx; this.y += this.vy;
+                }
+                draw() {
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(this.x, this.y, 2, 2); 
+                }
+            }
+
+            function getTextCoordinates() {
+                const tmpC = document.createElement('canvas');
+                tmpC.width = canvas.width;
+                tmpC.height = canvas.height;
+                const tCtx = tmpC.getContext('2d');
+                tCtx.textAlign = 'center'; tCtx.textBaseline = 'middle';
+                tCtx.fillStyle = 'white';
+                
+                tCtx.font = `bold ${fontSize1}px "Microsoft YaHei"`;
+                tCtx.fillText('周韵', canvas.width/2, canvas.height/2 - 40);
+                
+                tCtx.font = `bold ${fontSize2}px Arial`;
+                tCtx.fillText('happy everyday', canvas.width/2, canvas.height/2 + 60);
+
+                const idata = tCtx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = idata.data;
+                const step = 3; 
+                for (let y = 0; y < canvas.height; y += step) {
+                    for (let x = 0; x < canvas.width; x += step) {
+                        const idx = (y * canvas.width + x) * 4;
+                        if (data[idx + 3] > 128) { particles.push(new Particle(x, y)); }
+                    }
+                }
+            }
+            getTextCoordinates();
+            function animate() {
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => { p.update(); p.draw(); });
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+    </script>
+</body>
+</html>
